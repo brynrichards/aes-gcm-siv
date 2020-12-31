@@ -188,8 +188,8 @@ namespace Cryptography
 			byte* polyval = stackalloc byte[16];
 			long* lengthBlock = stackalloc long[2] { (long)adLen * 8, (long)ptLen * 8 };
 
-			var xorMask = Sse.StaticCast<int, byte>(Sse2.SetVector128(0, n[2], n[1], n[0]));
-			var andMask = Sse.StaticCast<ulong, byte>(Sse2.SetVector128(0x7fffffffffffffff, 0xffffffffffffffff));
+			var xorMask = Vector128.Create(n[0], n[1], n[2], 0).AsByte();
+			var andMask = Vector128.Create(0xffffffffffffffff, 0x7fffffffffffffff).AsByte();
 
 			DeriveKeys(nonce, ks, hashKey, encKey);
 
@@ -326,8 +326,8 @@ namespace Cryptography
 			byte* polyval = stackalloc byte[16];
 			long* lengthBlock = stackalloc long[2] { (long)adLen * 8, (long)ctLen * 8 };
 
-			var xorMask = Sse.StaticCast<int, byte>(Sse2.SetVector128(0, n[2], n[1], n[0]));
-			var andMask = Sse.StaticCast<ulong, byte>(Sse2.SetVector128(0x7fffffffffffffff, 0xffffffffffffffff));
+			var xorMask = Vector128.Create(n[0], n[1], n[2], 0).AsByte();
+			var andMask = Vector128.Create(0xffffffffffffffff, 0x7fffffffffffffff).AsByte();
 
 			DeriveKeys(nonce, ks, hashKey, encKey);
 			KeySchedule(encKey, encRoundKeys);
@@ -368,12 +368,12 @@ namespace Cryptography
 		{
 			Vector128<byte> xmm1, xmm2, xmm3, xmm4, xmm14;
 
-			var mask = Sse.StaticCast<int, byte>(Sse2.SetVector128(0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d));
-			var con1 = Sse.StaticCast<int, byte>(Sse2.SetVector128(1, 1, 1, 1));
-			var con3 = Sse.StaticCast<sbyte, byte>(Sse2.SetVector128(7, 6, 5, 4, 7, 6, 5, 4, -1, -1, -1, -1, -1, -1, -1, -1));
+			var mask = Vector128.Create(0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d).AsByte();
+			var con1 = Vector128.Create(1, 1, 1, 1).AsByte();
+			var con3 = Vector128.Create(-1, -1, -1, -1, -1, -1, -1, -1, 4, 5, 6, 7, 4, 5, 6, 7).AsByte();
 
-			xmm4 = Sse2.SetZeroVector128<byte>();
-			xmm14 = Sse2.SetZeroVector128<byte>();
+			xmm4 = Vector128.Create(0).AsByte();
+			xmm14 = Vector128.Create(0).AsByte();
 
 			xmm1 = Sse2.LoadVector128(&key[0]);
 			xmm3 = Sse2.LoadVector128(&key[16]);
@@ -385,17 +385,17 @@ namespace Cryptography
 			{
 				xmm2 = Ssse3.Shuffle(xmm3, mask);
 				xmm2 = Aes.EncryptLast(xmm2, con1);
-				con1 = Sse.StaticCast<uint, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, uint>(con1), 1));
-				xmm4 = Sse.StaticCast<ulong, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, ulong>(xmm1), 32));
+				con1 = Sse2.ShiftLeftLogical(con1.AsUInt32(), 1).AsByte();
+				xmm4 = Sse2.ShiftLeftLogical(xmm1.AsUInt64(), 32).AsByte();
 				xmm1 = Sse2.Xor(xmm1, xmm4);
 				xmm4 = Ssse3.Shuffle(xmm1, con3);
 				xmm1 = Sse2.Xor(xmm1, xmm4);
 				xmm1 = Sse2.Xor(xmm1, xmm2);
 				Sse2.Store(&ks[(i + 1) * 2 * 16], xmm1);
 
-				xmm2 = Sse.StaticCast<uint, byte>(Sse2.Shuffle(Sse.StaticCast<byte, uint>(xmm1), 0xff));
+				xmm2 = Sse2.Shuffle(xmm1.AsUInt32(), 0xff).AsByte();
 				xmm2 = Aes.EncryptLast(xmm2, xmm14);
-				xmm4 = Sse.StaticCast<ulong, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, ulong>(xmm3), 32));
+				xmm4 = Sse2.ShiftLeftLogical(xmm3.AsUInt64(), 32).AsByte();
 				xmm3 = Sse2.Xor(xmm4, xmm3);
 				xmm4 = Ssse3.Shuffle(xmm3, con3);
 				xmm3 = Sse2.Xor(xmm4, xmm3);
@@ -405,7 +405,7 @@ namespace Cryptography
 
 			xmm2 = Ssse3.Shuffle(xmm3, mask);
 			xmm2 = Aes.EncryptLast(xmm2, con1);
-			xmm4 = Sse.StaticCast<ulong, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, ulong>(xmm1), 32));
+			xmm4 = Sse2.ShiftLeftLogical(xmm1.AsUInt64(), 32).AsByte();
 			xmm1 = Sse2.Xor(xmm1, xmm4);
 			xmm4 = Ssse3.Shuffle(xmm1, con3);
 			xmm1 = Sse2.Xor(xmm1, xmm4);
@@ -418,14 +418,14 @@ namespace Cryptography
 		private static void DeriveKeys(byte* nonce, byte* ks, byte* hashKey, byte* encKey)
 		{
 			var n = (int*)nonce;
-			var one = Sse2.SetVector128(0, 0, 0, 1);
+			var one = Vector128.Create(1, 0, 0, 0);
 
-			var b1 = Sse.StaticCast<int, byte>(Sse2.SetVector128(n[2], n[1], n[0], 0));
-			var b2 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(b1), one));
-			var b3 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(b2), one));
-			var b4 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(b3), one));
-			var b5 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(b4), one));
-			var b6 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(b5), one));
+			var b1 = Vector128.Create(0, n[0], n[1], n[2]).AsByte();
+			var b2 = Sse2.Add(b1.AsInt32(), one).AsByte();
+			var b3 = Sse2.Add(b2.AsInt32(), one).AsByte();
+			var b4 = Sse2.Add(b3.AsInt32(), one).AsByte();
+			var b5 = Sse2.Add(b4.AsInt32(), one).AsByte();
+			var b6 = Sse2.Add(b5.AsInt32(), one).AsByte();
 
 			var xmm1 = Sse2.LoadVector128(&ks[0]);
 			var xmm3 = Sse2.LoadVector128(&ks[16]);
@@ -472,14 +472,14 @@ namespace Cryptography
 			b4 = Aes.EncryptLast(b4, xmm1);
 			b5 = Aes.EncryptLast(b5, xmm1);
 			b6 = Aes.EncryptLast(b6, xmm1);
+			
+			Sse2.StoreScalar((long*)hashKey + 0, b1.AsInt64());
+			Sse2.StoreScalar((long*)hashKey + 1, b2.AsInt64());
 
-			Sse2.StoreLow((long*)hashKey + 0, Sse.StaticCast<byte, long>(b1));
-			Sse2.StoreLow((long*)hashKey + 1, Sse.StaticCast<byte, long>(b2));
-
-			Sse2.StoreLow((long*)encKey + 0, Sse.StaticCast<byte, long>(b3));
-			Sse2.StoreLow((long*)encKey + 1, Sse.StaticCast<byte, long>(b4));
-			Sse2.StoreLow((long*)encKey + 2, Sse.StaticCast<byte, long>(b5));
-			Sse2.StoreLow((long*)encKey + 3, Sse.StaticCast<byte, long>(b6));
+			Sse2.StoreScalar((long*)encKey + 0, b3.AsInt64());
+			Sse2.StoreScalar((long*)encKey + 1, b4.AsInt64());
+			Sse2.StoreScalar((long*)encKey + 2, b5.AsInt64());
+			Sse2.StoreScalar((long*)encKey + 3, b6.AsInt64());
 		}
 
 		// EncryptTag performs a key expansion of the AES-256 key in key, writes
@@ -488,12 +488,12 @@ namespace Cryptography
 		{
 			Vector128<byte> xmm1, xmm2, xmm3, xmm4, xmm14;
 
-			var mask = Sse.StaticCast<int, byte>(Sse2.SetVector128(0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d));
-			var con1 = Sse.StaticCast<int, byte>(Sse2.SetVector128(1, 1, 1, 1));
-			var con3 = Sse.StaticCast<sbyte, byte>(Sse2.SetVector128(7, 6, 5, 4, 7, 6, 5, 4, -1, -1, -1, -1, -1, -1, -1, -1));
+			var mask = Vector128.Create(0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d).AsByte();
+			var con1 = Vector128.Create(1, 1, 1, 1).AsByte();
+			var con3 = Vector128.Create(-1, -1, -1, -1, -1, -1, -1, -1, 4, 5, 6, 7, 4, 5, 6, 7).AsByte();
 
-			xmm4 = Sse2.SetZeroVector128<byte>();
-			xmm14 = Sse2.SetZeroVector128<byte>();
+			xmm4 = Vector128.Create(0).AsByte();
+			xmm14 = Vector128.Create(0).AsByte();
 
 			xmm1 = Sse2.LoadVector128(&key[0]);
 			xmm3 = Sse2.LoadVector128(&key[16]);
@@ -510,8 +510,8 @@ namespace Cryptography
 			{
 				xmm2 = Ssse3.Shuffle(xmm3, mask);
 				xmm2 = Aes.EncryptLast(xmm2, con1);
-				con1 = Sse.StaticCast<uint, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, uint>(con1), 1));
-				xmm4 = Sse.StaticCast<ulong, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, ulong>(xmm1), 32));
+				con1 = Sse2.ShiftLeftLogical(con1.AsUInt32(), 1).AsByte();
+				xmm4 = Sse2.ShiftLeftLogical(xmm1.AsUInt64(), 32).AsByte();
 				xmm1 = Sse2.Xor(xmm1, xmm4);
 				xmm4 = Ssse3.Shuffle(xmm1, con3);
 				xmm1 = Sse2.Xor(xmm1, xmm4);
@@ -519,9 +519,9 @@ namespace Cryptography
 				Sse2.Store(&ks[(i + 1) * 2 * 16], xmm1);
 				b1 = Aes.Encrypt(b1, xmm1);
 
-				xmm2 = Sse.StaticCast<uint, byte>(Sse2.Shuffle(Sse.StaticCast<byte, uint>(xmm1), 0xff));
+				xmm2 = Sse2.Shuffle(xmm1.AsUInt32(), 0xff).AsByte();
 				xmm2 = Aes.EncryptLast(xmm2, xmm14);
-				xmm4 = Sse.StaticCast<ulong, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, ulong>(xmm3), 32));
+				xmm4 = Sse2.ShiftLeftLogical(xmm3.AsUInt64(), 32).AsByte();
 				xmm3 = Sse2.Xor(xmm4, xmm3);
 				xmm4 = Ssse3.Shuffle(xmm3, con3);
 				xmm3 = Sse2.Xor(xmm4, xmm3);
@@ -532,7 +532,7 @@ namespace Cryptography
 
 			xmm2 = Ssse3.Shuffle(xmm3, mask);
 			xmm2 = Aes.EncryptLast(xmm2, con1);
-			xmm4 = Sse.StaticCast<ulong, byte>(Sse2.ShiftLeftLogical(Sse.StaticCast<byte, ulong>(xmm1), 32));
+			xmm4 = Sse2.ShiftLeftLogical(xmm1.AsUInt64(), 32).AsByte();
 			xmm1 = Sse2.Xor(xmm1, xmm4);
 			xmm4 = Ssse3.Shuffle(xmm1, con3);
 			xmm1 = Sse2.Xor(xmm1, xmm4);

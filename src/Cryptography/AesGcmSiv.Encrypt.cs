@@ -23,19 +23,19 @@ namespace Cryptography
 			int remainder4 = blocks % 4;
 			int remainder4Pos = blocks - remainder4;
 
-			var orMask = Sse.StaticCast<uint, byte>(Sse2.SetVector128(0x80000000, 0, 0, 0));
+			var orMask = Vector128.Create(0, 0, 0, 0x80000000).AsByte();
 			var ctr = Sse2.Or(Sse2.LoadVector128(tag), orMask);
 
-			var one = Sse2.SetVector128(0, 0, 0, 1);
-			var two = Sse2.SetVector128(0, 0, 0, 2);
+			var one = Vector128.Create(1, 0, 0, 0);
+			var two = Vector128.Create(2, 0, 0, 0);
 
 			for (int i = 0; i < remainder4Pos; i += 4)
 			{
 				var tmp0 = ctr;
-				var tmp1 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(ctr), one));
-				var tmp2 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(ctr), two));
-				var tmp3 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp2), one));
-				ctr = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp2), two));
+				var tmp1 = Sse2.Add(ctr.AsInt32(), one).AsByte();
+				var tmp2 = Sse2.Add(ctr.AsInt32(), two).AsByte();
+				var tmp3 = Sse2.Add(tmp2.AsInt32(), one).AsByte();
+				ctr = Sse2.Add(tmp2.AsInt32(), two).AsByte();
 
 				var key = Sse2.LoadVector128(ks);
 				tmp0 = Sse2.Xor(tmp0, key);
@@ -72,7 +72,7 @@ namespace Cryptography
 			for (int i = 0; i < remainder4; ++i)
 			{
 				var tmp = ctr;
-				ctr = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(ctr), one));
+				ctr = Sse2.Add(ctr.AsInt32(), one).AsByte();
 				tmp = Sse2.Xor(tmp, Sse2.LoadVector128(ks));
 
 				for (int j = 1; j < 14; ++j)
@@ -119,23 +119,23 @@ namespace Cryptography
 			int remainder8 = blocks % 8;
 			int remainder8Pos = blocks - remainder8;
 
-			var orMask = Sse.StaticCast<uint, byte>(Sse2.SetVector128(0x80000000, 0, 0, 0));
+			var orMask = Vector128.Create(0, 0, 0, 0x80000000).AsByte();
 			var ctr = Sse2.Or(Sse2.LoadVector128(tag), orMask);
 
-			var one = Sse2.SetVector128(0, 0, 0, 1);
-			var two = Sse2.SetVector128(0, 0, 0, 2);
+			var one = Vector128.Create(1, 0, 0, 0);
+			var two = Vector128.Create(2, 0, 0, 0);
 
 			for (int i = 0; i < remainder8Pos; i += 8)
 			{
 				var tmp0 = ctr;
-				var tmp1 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(ctr), one));
-				var tmp2 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(ctr), two));
-				var tmp3 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp2), one));
-				var tmp4 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp2), two));
-				var tmp5 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp4), one));
-				var tmp6 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp4), two));
-				var tmp7 = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp6), one));
-				ctr = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(tmp6), two));
+				var tmp1 = Sse2.Add(ctr.AsInt32(), one).AsByte();
+				var tmp2 = Sse2.Add(ctr.AsInt32(), two).AsByte();
+				var tmp3 = Sse2.Add(tmp2.AsInt32(), one).AsByte();
+				var tmp4 = Sse2.Add(tmp2.AsInt32(), two).AsByte();
+				var tmp5 = Sse2.Add(tmp4.AsInt32(), one).AsByte();
+				var tmp6 = Sse2.Add(tmp4.AsInt32(), two).AsByte();
+				var tmp7 = Sse2.Add(tmp6.AsInt32(), one).AsByte();
+				ctr = Sse2.Add(tmp6.AsInt32(), two).AsByte();
 
 				var key = Sse2.LoadVector128(ks);
 				tmp0 = Sse2.Xor(tmp0, key);
@@ -192,7 +192,7 @@ namespace Cryptography
 			for (int i = 0; i < remainder8; ++i)
 			{
 				var tmp = ctr;
-				ctr = Sse.StaticCast<int, byte>(Sse2.Add(Sse.StaticCast<byte, int>(ctr), one));
+				ctr = Sse2.Add(ctr.AsInt32(), one).AsByte();
 				tmp = Sse2.Xor(tmp, Sse2.LoadVector128(ks));
 
 				for (int j = 1; j < 14; ++j)
